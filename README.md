@@ -95,16 +95,37 @@ Enable + start:
 - Add a small health-check endpoint on FastAPI (e.g., `/health`) and use it.
 - For extra robustness, run API and scheduler as separate services.
 
-## Hourly cron job + email notifications
+## GitHub Actions hourly update (no local cron)
 
-1. Ensure `.env` has `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, and `EMAIL_TO` configured (see `.env.example`).
-2. Use the auto script:
-   - `./auto_update.sh`
-3. Add cron entry:
+This repo now has a GitHub Actions workflow that runs hourly and performs the full pipeline on the cloud:
+- fetches news (`east_africa`, `global`)
+- scores with VADER
+- appends to `data/sentiment_news.csv`
+- commits and pushes to `main`
+- sends email notification via SMTP
 
-```bash
-crontab -e
-```
+1. Add the following secrets in GitHub repository settings > Secrets and variables > Actions:
+   - `NEWSAPI_KEY`
+   - `GITHUB_TOKEN` (actions default if not set)
+   - `COMMIT_USER`
+   - `COMMIT_EMAIL`
+   - `SMTP_USER`
+   - `SMTP_PASS`
+   - `EMAIL_FROM`
+   - `EMAIL_TO`
+
+2. Sleep no longer required on local host.
+
+3. Workflow file: `.github/workflows/auto_update.yml`
+
+4. Optional (if still running local): stop local `auto_update.sh` cron task / scheduler if you fully migrate to Actions.
+
+### Local fallback testing still useful
+
+Run:
+- `python src/run_update.py`
+
+But in production this is now done by GitHub every hour.
 
 Then add:
 

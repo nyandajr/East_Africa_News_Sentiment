@@ -1,0 +1,48 @@
+name: EA News Sentiment Hourly Update
+
+on:
+  schedule:
+    - cron: '0 * * * *' # every hour on the hour
+  workflow_dispatch: {}
+
+jobs:
+  update_data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Copy env template and inject secrets
+        run: |
+          cp .env.example .env
+          echo "NEWSAPI_KEY=${{ secrets.NEWSAPI_KEY }}" >> .env
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> .env
+          echo "COMMIT_USER=${{ secrets.COMMIT_USER }}" >> .env
+          echo "COMMIT_EMAIL=${{ secrets.COMMIT_EMAIL }}" >> .env
+          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
+          echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
+          echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
+          echo "EMAIL_TO=${{ secrets.EMAIL_TO }}" >> .env
+
+      - name: Run fetch+sentiment+storage
+        run: |
+          python src/run_update.py
+
+      - name: Commit and push data
+        run: |
+          git config user.name "${{ secrets.COMMIT_USER }}"
+          git config user.email "${{ secrets.COMMIT_EMAIL }}"
+          git add data/sentiment_news.csv
+          git commit -m "data: hourly news sentiment update $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "No changes to commit"
+          git push
