@@ -240,7 +240,9 @@ st.markdown('''
 # Add last refresh indicator
 if DATA_FILE.exists():
     last_refresh = pd.to_datetime(DATA_FILE.stat().st_mtime, unit='s', utc=True)
-    last_refresh = last_refresh.tz_convert('UTC').strftime('%Y-%m-%d %H:%M:%S UTC')
+    last_refresh_utc = last_refresh.tz_convert('UTC')
+    last_refresh_eat = last_refresh_utc.tz_convert('Etc/GMT-3')
+    last_refresh = last_refresh_eat.strftime('%Y-%m-%d %H:%M:%S EAT')
     st.markdown(f'<div style="font-size:12px;color:#a3b8d1;margin-bottom:20px;">Last refreshed: <b>{last_refresh}</b></div>', unsafe_allow_html=True)
 else:
     st.markdown('<div style="font-size:12px;color:#a3b8d1;margin-bottom:20px;">Last refreshed: <b>N/A</b></div>', unsafe_allow_html=True)

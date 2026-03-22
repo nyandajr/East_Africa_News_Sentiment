@@ -47,6 +47,24 @@ def get_sentiment(
     return {'total': len(filtered), 'records': filtered.to_dict(orient='records')}
 
 
+@app.get('/health')
+def health():
+    df = load_data()
+    if df.empty:
+        return {'status': 'ok', 'entries': 0, 'latest_fetched_at': None}
+
+    latest = df['fetchedAt'].max() if 'fetchedAt' in df.columns else None
+    if pd.notna(latest):
+        latest = pd.to_datetime(latest).isoformat()
+
+    return {
+        'status': 'ok',
+        'entries': len(df),
+        'latest_fetched_at': latest,
+        'source': 'sentiment_news.csv'
+    }
+
+
 @app.get('/summary')
 def summary():
     df = load_data()

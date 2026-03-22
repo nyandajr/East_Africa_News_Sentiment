@@ -17,7 +17,7 @@ def run_job():
     repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     subprocess.run(['git', 'add', 'data/sentiment_news.csv'], cwd=repo_dir)
     subprocess.run(['git', 'commit', '-m', f'data: hourly news sentiment update {ts}'], cwd=repo_dir)
-    subprocess.run(['git', 'push', 'origin', 'master'], cwd=repo_dir)
+    subprocess.run(['git', 'push', 'origin', 'main'], cwd=repo_dir)
 
 
 if __name__ == '__main__':
