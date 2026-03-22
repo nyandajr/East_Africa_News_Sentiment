@@ -95,3 +95,27 @@ Enable + start:
 - Add a small health-check endpoint on FastAPI (e.g., `/health`) and use it.
 - For extra robustness, run API and scheduler as separate services.
 
+## Hourly cron job + email notifications
+
+1. Ensure `.env` has `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, and `EMAIL_TO` configured (see `.env.example`).
+2. Use the auto script:
+   - `./auto_update.sh`
+3. Add cron entry:
+
+```bash
+crontab -e
+```
+
+Then add:
+
+```cron
+# hourly at beginning of hour (x:00)
+0 * * * * /home/fred/Downloads/Python_Projects/East_Africa_News_Sentiment/auto_update.sh
+```
+
+4. Validate log and email:
+   - `tail -n 30 logs/scheduler.log`
+   - check inbox for subject `EA News Sentiment update (success|failure)`
+
+> Note: Gmail usually requires an App Password if you use 2FA. In Settings -> Security -> App Passwords, generate one for "Mail".
+
