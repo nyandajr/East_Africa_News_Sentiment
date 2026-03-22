@@ -43,7 +43,7 @@ def send_email(subject: str, body: str) -> bool:
 def main():
     fetched = []
     for category in ['east_africa', 'global']:
-        fetched.extend(fetch_headlines(category, hours_back=72))
+        fetched.extend(fetch_headlines(category, hours_back=1))
 
     if not fetched:
         body = 'No new articles fetched for East Africa and global.'
