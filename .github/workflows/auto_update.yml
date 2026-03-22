@@ -11,7 +11,7 @@ env:
 jobs:
   update_data:
     runs-on: ubuntu-latest
-    environment: EA_sentiment        # ← THIS is the key fix
+    environment: EA_sentiment
 
     steps:
       - name: Checkout repository
@@ -28,6 +28,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Debug — check secrets are loaded
+        env:
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+        run: |
+          if [ -z "$NEWSAPI_KEY" ]; then
+            echo "❌ NEWSAPI_KEY is EMPTY — secret not found"
+          else
+            echo "✅ NEWSAPI_KEY is SET — length=${#NEWSAPI_KEY}"
+          fi
 
       - name: Run fetch+sentiment+storage
         env:
