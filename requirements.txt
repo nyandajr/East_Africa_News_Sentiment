@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pandas
+requests
+vaderSentiment
+apscheduler
+python-dotenv
+pydantic
+streamlit
