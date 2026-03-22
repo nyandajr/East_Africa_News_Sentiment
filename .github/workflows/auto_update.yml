@@ -2,8 +2,11 @@ name: EA News Sentiment Hourly Update
 
 on:
   schedule:
-    - cron: '0 * * * *' # every hour on the hour
-  workflow_dispatch: {}
+    - cron: '0 * * * *'  # every hour on the hour
+  workflow_dispatch: {}   # manual trigger
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   update_data:
@@ -11,7 +14,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -23,19 +28,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Copy env template and inject secrets
-        run: |
-          cp .env.example .env
-          echo "NEWSAPI_KEY=${{ secrets.NEWSAPI_KEY }}" >> .env
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> .env
-          echo "COMMIT_USER=${{ secrets.COMMIT_USER }}" >> .env
-          echo "COMMIT_EMAIL=${{ secrets.COMMIT_EMAIL }}" >> .env
-          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-          echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-          echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
-          echo "EMAIL_TO=${{ secrets.EMAIL_TO }}" >> .env
-
       - name: Run fetch+sentiment+storage
+        env:
+          NEWSAPI_KEY:    ${{ secrets.NEWSAPI_KEY }}
+          COMMIT_USER:    ${{ secrets.COMMIT_USER }}
+          COMMIT_EMAIL:   ${{ secrets.COMMIT_EMAIL }}
+          SMTP_USER:      ${{ secrets.SMTP_USER }}
+          SMTP_PASS:      ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:     ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:       ${{ secrets.EMAIL_TO }}
         run: |
           python src/run_update.py
 
@@ -44,5 +45,5 @@ jobs:
           git config user.name "${{ secrets.COMMIT_USER }}"
           git config user.email "${{ secrets.COMMIT_EMAIL }}"
           git add data/sentiment_news.csv
-          git commit -m "data: hourly news sentiment update $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "No changes to commit"
+          git commit -m "data: hourly sentiment update $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "No changes to commit"
           git push
