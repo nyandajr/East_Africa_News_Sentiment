@@ -1,30 +1,31 @@
 """Simple entrypoint for GitHub Actions to run fetch -> sentiment -> storage."""
 
 import os
-from dotenv import load_dotenv
-import pandas as pd
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
+import pandas as pd
 from news_fetch import fetch_headlines
 from sentiment import score_headlines
 from storage import append_data
 
+# DO NOT use load_dotenv() — GitHub Actions injects secrets as env variables directly
+
 
 def send_email(subject: str, body: str) -> bool:
-    smtp_user = os.getenv('SMTP_USER')
-    smtp_pass = os.getenv('SMTP_PASS')
+    smtp_user  = os.getenv('SMTP_USER')
+    smtp_pass  = os.getenv('SMTP_PASS')
     email_from = os.getenv('EMAIL_FROM')
-    email_to = os.getenv('EMAIL_TO')
+    email_to   = os.getenv('EMAIL_TO')
 
     if not (smtp_user and smtp_pass and email_from and email_to):
         print('Email configuration missing; skipping email send.')
         return False
 
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-
     msg = MIMEMultipart()
-    msg['From'] = email_from
-    msg['To'] = email_to
+    msg['From']    = email_from
+    msg['To']      = email_to
     msg['Subject'] = subject
     msg.attach(MIMEText(body, 'plain'))
 
@@ -40,8 +41,6 @@ def send_email(subject: str, body: str) -> bool:
 
 
 def main():
-    load_dotenv('.env')
-
     fetched = []
     for category in ['east_africa', 'global']:
         fetched.extend(fetch_headlines(category, hours_back=72))
@@ -52,11 +51,12 @@ def main():
         send_email('EA News Sentiment update (no_data)', body)
         return
 
-    df = pd.DataFrame(fetched)
+    df     = pd.DataFrame(fetched)
     scored = score_headlines(df)
     append_data(scored)
+
     count = len(scored)
-    body = f'Fetched and scored {count} records; appended to data/sentiment_news.csv.'
+    body  = f'Fetched and scored {count} records; appended to data/sentiment_news.csv.'
     print(body)
     send_email('EA News Sentiment update (success)', body)
 
