@@ -11,6 +11,7 @@ env:
 jobs:
   update_data:
     runs-on: ubuntu-latest
+    environment: EA_sentiment        # ← THIS is the key fix
 
     steps:
       - name: Checkout repository
@@ -30,13 +31,13 @@ jobs:
 
       - name: Run fetch+sentiment+storage
         env:
-          NEWSAPI_KEY:    ${{ secrets.NEWSAPI_KEY }}
-          COMMIT_USER:    ${{ secrets.COMMIT_USER }}
-          COMMIT_EMAIL:   ${{ secrets.COMMIT_EMAIL }}
-          SMTP_USER:      ${{ secrets.SMTP_USER }}
-          SMTP_PASS:      ${{ secrets.SMTP_PASS }}
-          EMAIL_FROM:     ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO:       ${{ secrets.EMAIL_TO }}
+          NEWSAPI_KEY:   ${{ secrets.NEWSAPI_KEY }}
+          COMMIT_USER:   ${{ secrets.COMMIT_USER }}
+          COMMIT_EMAIL:  ${{ secrets.COMMIT_EMAIL }}
+          SMTP_USER:     ${{ secrets.SMTP_USER }}
+          SMTP_PASS:     ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:    ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:      ${{ secrets.EMAIL_TO }}
         run: |
           python src/run_update.py
 
