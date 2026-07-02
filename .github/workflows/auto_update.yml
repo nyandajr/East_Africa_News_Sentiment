@@ -2,7 +2,7 @@ name: EA News Sentiment Hourly Update
 
 on:
   schedule:
-    - cron: '0 * * * *'  # every hour on the hour
+    - cron: '17 * * * *'  # hourly, offset from :00 — GitHub's own docs warn the top of the hour is peak load and scheduled runs get delayed/dropped there
   workflow_dispatch: {}   # manual trigger
 
 permissions:
