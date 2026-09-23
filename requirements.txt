@@ -6,3 +6,4 @@ uvicorn==0.30.0
 pandas==2.2.2
 vaderSentiment==3.3.2
 requests==2.32.5
+python-dotenv==1.0.1
