@@ -1,0 +1,51 @@
+name: EA News Sentiment Hourly Update
+
+on:
+  # schedule disabled 2026-07-08: migrated to a VM-based replacement
+  # (vm_automation/run_and_push.py). To revert: uncomment the line below.
+  # - cron: '17 * * * *'  # hourly, offset from :00 — GitHub's own docs warn the top of the hour is peak load and scheduled runs get delayed/dropped there
+  workflow_dispatch: {}   # Manual trigger only, while the VM version is being tested
+
+permissions:
+  contents: write         # ← allows git push
+
+jobs:
+  update_data:
+    runs-on: ubuntu-latest
+    environment: EA_sentiment
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run fetch+sentiment+storage
+        env:
+          NEWSAPI_KEY:   ${{ secrets.NEWSAPI_KEY }}
+          COMMIT_USER:   ${{ secrets.COMMIT_USER }}
+          COMMIT_EMAIL:  ${{ secrets.COMMIT_EMAIL }}
+          SMTP_USER:     ${{ secrets.SMTP_USER }}
+          SMTP_PASS:     ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM:    ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:      ${{ secrets.EMAIL_TO }}
+        run: |
+          python src/run_update.py
+
+      - name: Commit and push data
+        run: |
+          git config user.name "${{ secrets.COMMIT_USER }}"
+          git config user.email "${{ secrets.COMMIT_EMAIL }}"
+          git add data/sentiment_news.csv
+          git commit -m "data: hourly sentiment update $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "No changes to commit"
+          git push
