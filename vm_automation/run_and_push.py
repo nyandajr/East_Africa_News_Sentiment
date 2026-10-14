@@ -12,7 +12,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 REPO_DIR = Path(__file__).resolve().parent.parent
-DATA_PATHS = ["data/sentiment_news.csv"]
+DATA_PATHS = ["data/sentiment_news.csv", "data/archive/"]
 CSV_PATH = REPO_DIR / "data" / "sentiment_news.csv"
 
 load_dotenv(REPO_DIR / ".env")  # populates NEWSAPI_KEY, NEWSDATA_API_KEY, SMTP_* for run_update.py
