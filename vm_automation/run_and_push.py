@@ -4,6 +4,7 @@ five repos in this account).
 """
 
 import csv
+import os
 import subprocess
 import sys
 from collections import Counter
@@ -15,7 +16,7 @@ REPO_DIR = Path(__file__).resolve().parent.parent
 DATA_PATHS = ["data/sentiment_news.csv", "data/archive/"]
 CSV_PATH = REPO_DIR / "data" / "sentiment_news.csv"
 
-load_dotenv(REPO_DIR / ".env")  # populates NEWSAPI_KEY, NEWSDATA_API_KEY, SMTP_* for run_update.py
+load_dotenv(REPO_DIR / ".env")  # populates GITHUB_TOKEN (pushing), NEWSAPI_KEY, NEWSDATA_API_KEY, SMTP_*
 
 
 def run(*args, check=True):
@@ -69,12 +70,24 @@ def git_commit_and_push(rows_before):
         return
 
     run("git", "commit", "-m", build_commit_message(rows_before))
+    # Authenticated URL built at push time from the .env token, rather than
+    # a credential embedded in the remote's stored URL (what this repo used
+    # before -- lost when its bloated .git got re-cloned fresh during the
+    # 2026-10-14 git-health fixup, since a plain `git clone <https-url>`
+    # doesn't carry that over). Same pattern as every other repo in this
+    # portfolio now.
+    #
     # No --force: sync_with_remote() already reset --hard to origin/main,
     # so this is always a fast-forward. GitHub's contribution graph is
     # fed by a separate PushEvent pipeline that silently drops commits
     # behind a force-pushed ref -- confirmed undercounting real commits
     # portfolio-wide by up to 80%+ before this was fixed.
-    run("git", "push", "origin", "HEAD:main")
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        push_url = f"https://x-access-token:{token}@github.com/nyandajr/East_Africa_News_Sentiment.git"
+        run("git", "push", push_url, "HEAD:main")
+    else:
+        run("git", "push", "origin", "HEAD:main")
 
 
 def main():
