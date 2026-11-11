@@ -27,11 +27,15 @@ ARCHIVE_DIR = os.path.join(DATA_DIR, 'archive')
 # needs the recent window, not the full history.
 DEDUP_WINDOW_DAYS = 7
 
-# Once the active file crosses this, everything older than
-# ARCHIVE_AFTER_DAYS gets split into data/archive/ and removed from the
-# active file. 50MB leaves a lot of headroom under GitHub's 100MB limit.
+# Once the active file crosses this, the oldest rows are split into
+# data/archive/ until the active file is back down near TARGET_ACTIVE_SIZE_BYTES.
+# 50MB leaves a lot of headroom under GitHub's 100MB limit.
 MAX_ACTIVE_SIZE_BYTES = 50 * 1024 * 1024
-ARCHIVE_AFTER_DAYS = 30
+TARGET_ACTIVE_SIZE_BYTES = 40 * 1024 * 1024
+
+# Never archive data newer than this, even if the file is still over target --
+# keeps very recent news always in the active (non-gzipped) file.
+MIN_RECENT_DAYS = 3
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -76,7 +80,8 @@ def append_data(df: pd.DataFrame):
 
 
 def _archive_if_needed():
-    if not os.path.exists(CSV_FILE) or os.path.getsize(CSV_FILE) < MAX_ACTIVE_SIZE_BYTES:
+    size = os.path.getsize(CSV_FILE) if os.path.exists(CSV_FILE) else 0
+    if size < MAX_ACTIVE_SIZE_BYTES:
         return
 
     # fetchedAt mixes naive and timezone-aware timestamps across the
@@ -84,18 +89,34 @@ def _archive_if_needed():
     # it, pandas infers ONE format from the first row and silently
     # coerces every row that doesn't match it to NaT -- confirmed this
     # dropped 94,289 of 94,428 rows (99.85%) on this exact file during
-    # testing, which then both "archived" and "kept active" would have
-    # lost almost everything, since NaT rows match neither < nor >=
-    # the cutoff. Caught before anything was committed or pushed.
+    # testing. Caught before anything was committed or pushed.
     full = pd.read_csv(CSV_FILE)
     fetched = pd.to_datetime(full['fetchedAt'], utc=True, errors='coerce', format='mixed')
-    cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=ARCHIVE_AFTER_DAYS)
-    old, recent = full[fetched < cutoff], full[fetched >= cutoff]
-    if old.empty:
-        return
+    full = full.assign(_fetched=fetched).sort_values('_fetched', kind='stable').reset_index(drop=True)
+
+    # A fixed-days archive window can leave the active file permanently
+    # over MAX_ACTIVE_SIZE_BYTES if ingestion volume rises -- confirmed on
+    # this exact file, which kept creeping to ~70MB against the intended
+    # 50MB ceiling under the old 30-day window. Trim to a target ROW COUNT
+    # (estimated from bytes/row) instead, so the active file lands near
+    # TARGET_ACTIVE_SIZE_BYTES regardless of volume, while MIN_RECENT_DAYS
+    # still guarantees very recent news is never archived away.
+    bytes_per_row = size / len(full)
+    target_rows = max(1, int(TARGET_ACTIVE_SIZE_BYTES / bytes_per_row))
+    min_keep_cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=MIN_RECENT_DAYS)
+    protected = int((full['_fetched'] >= min_keep_cutoff).sum())
+    keep_rows = max(target_rows, protected)
+
+    archive_count = len(full) - keep_rows
+    if archive_count <= 0:
+        return  # already within the protected recency window; nothing safe to archive yet
+
+    old = full.iloc[:archive_count].drop(columns='_fetched')
+    recent = full.iloc[archive_count:].drop(columns='_fetched')
 
     os.makedirs(ARCHIVE_DIR, exist_ok=True)
-    start, end = fetched[old.index].min().date(), fetched[old.index].max().date()
+    start = full['_fetched'].iloc[0].date()
+    end = full['_fetched'].iloc[archive_count - 1].date()
     archive_path = os.path.join(ARCHIVE_DIR, f'sentiment_news_{start}_to_{end}.csv.gz')
     with gzip.open(archive_path, 'wt', newline='') as f:
         old.to_csv(f, index=False)
